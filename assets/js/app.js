@@ -1,3 +1,406 @@
+// 访问历史记录
+let visitHistory = JSON.parse(localStorage.getItem('visitHistory') || '{}');
+
+// 默认网站池（当历史记录不足时使用）
+const defaultWebsites = [
+    {
+        name: "腾讯视频",
+        description: "海量高清影视资源在线观看", 
+        url: "https://v.qq.com",
+        icon: "https://v.qq.com/favicon.ico"
+    },
+    {
+        name: "爱奇艺",
+        description: "热门剧集、综艺、电影一网打尽",
+        url: "https://www.iqiyi.com/?vfm=f_588_wrb&fv=ac30238882b84c8c",
+        icon: "https://www.iqiyi.com/favicon.ico"
+    },
+    {
+        name: "优酷视频",
+        description: "高清视频在线观看平台",
+        url: "https://youku.com/",
+        icon: "https://www.youku.com/favicon.ico"
+    },
+    {
+        name: "芒果TV",
+        description: "热门综艺和独家剧集",
+        url: "https://www.mgtv.com/b/611422/20536518.html?cxid=bfan6mqcg",
+        icon: "https://www.mgtv.com/favicon.ico"
+    },
+    {
+        name: "哔哩哔哩",
+        description: "年轻人的潮流文化娱乐社区",
+        url: "https://www.bilibili.com",
+        icon: "https://www.bilibili.com/favicon.ico"
+    },
+    {
+        name: "YouTube",
+        description: "全球最大的视频分享平台",
+        url: "https://www.youtube.com",
+        icon: "https://www.youtube.com/favicon.ico"
+    },
+    {
+        name: "微博",
+        description: "随时随地发现新鲜事",
+        url: "https://weibo.com",
+        icon: "https://weibo.com/favicon.ico"
+    },
+    {
+        name: "知乎",
+        description: "有问题，就会有答案",
+        url: "https://www.zhihu.com",
+        icon: "https://www.zhihu.com/favicon.ico"
+    }
+];
+
+// 动态生成的网站卡片数据（基于访问历史）
+let websiteCards = [];
+
+// 初始化一些示例访问历史数据（仅在首次使用时）
+function initSampleVisitHistory() {
+    if (Object.keys(visitHistory).length === 0) {
+        console.log('首次使用，初始化示例访问历史...');
+        
+        const today = new Date().toDateString();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toDateString();
+        
+        // 模拟一些访问记录
+        const sampleHistory = {
+            'v.qq.com': {
+                name: '腾讯视频',
+                description: '海量高清影视资源在线观看',
+                url: 'https://v.qq.com',
+                icon: 'https://v.qq.com/favicon.ico',
+                visits: {
+                    [yesterdayStr]: 8,
+                    [today]: 3
+                },
+                totalVisits: 25
+            },
+            'www.bilibili.com': {
+                name: '哔哩哔哩',
+                description: '年轻人的潮流文化娱乐社区',
+                url: 'https://www.bilibili.com',
+                icon: 'https://www.bilibili.com/favicon.ico',
+                visits: {
+                    [yesterdayStr]: 6,
+                    [today]: 5
+                },
+                totalVisits: 18
+            },
+            'www.iqiyi.com': {
+                name: '爱奇艺',
+                description: '热门剧集、综艺、电影一网打尽',
+                url: 'https://www.iqiyi.com',
+                icon: 'https://www.iqiyi.com/favicon.ico',
+                visits: {
+                    [yesterdayStr]: 4,
+                    [today]: 2
+                },
+                totalVisits: 12
+            },
+            'www.zhihu.com': {
+                name: '知乎',
+                description: '有问题，就会有答案',
+                url: 'https://www.zhihu.com',
+                icon: 'https://www.zhihu.com/favicon.ico',
+                visits: {
+                    [yesterdayStr]: 5,
+                    [today]: 1
+                },
+                totalVisits: 15
+            },
+            'weibo.com': {
+                name: '微博',
+                description: '随时随地发现新鲜事',
+                url: 'https://weibo.com',
+                icon: 'https://weibo.com/favicon.ico',
+                visits: {
+                    [yesterdayStr]: 3,
+                    [today]: 4
+                },
+                totalVisits: 10
+            }
+        };
+        
+        visitHistory = sampleHistory;
+        localStorage.setItem('visitHistory', JSON.stringify(visitHistory));
+        console.log('示例访问历史已初始化');
+    }
+}
+
+// 记录网站访问
+function recordVisit(url, name, description, icon) {
+    if (!url || url === '#') return; // 不记录空链接
+    
+    const today = new Date().toDateString();
+    const domain = new URL(url).hostname;
+    
+    if (!visitHistory[domain]) {
+        visitHistory[domain] = {
+            name: name,
+            description: description,
+            url: url,
+            icon: icon,
+            visits: {},
+            totalVisits: 0
+        };
+    }
+    
+    // 记录今日访问
+    if (!visitHistory[domain].visits[today]) {
+        visitHistory[domain].visits[today] = 0;
+    }
+    visitHistory[domain].visits[today]++;
+    visitHistory[domain].totalVisits++;
+    
+    // 更新网站信息（可能用户编辑过）
+    visitHistory[domain].name = name;
+    visitHistory[domain].description = description;
+    visitHistory[domain].icon = icon;
+    
+    // 保存到localStorage
+    localStorage.setItem('visitHistory', JSON.stringify(visitHistory));
+    
+    console.log(`记录访问: ${name} (${domain})`);
+}
+
+// 获取访问频率最高的5个网站
+function getTopVisitedWebsites() {
+    // 计算每个网站的访问分数（昨天权重更高）
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+    
+    const today = new Date().toDateString();
+    
+    const scored = Object.entries(visitHistory).map(([domain, data]) => {
+        const yesterdayVisits = data.visits[yesterdayStr] || 0;
+        const todayVisits = data.visits[today] || 0;
+        const totalVisits = data.totalVisits || 0;
+        
+        // 昨天访问权重为3，今天访问权重为2，总访问权重为1
+        const score = yesterdayVisits * 3 + todayVisits * 2 + totalVisits * 1;
+        
+        return {
+            domain,
+            score,
+            data: {
+                name: data.name,
+                description: data.description,
+                url: data.url,
+                icon: data.icon
+            }
+        };
+    });
+    
+    // 按分数排序，取前5个
+    const top5 = scored
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .map(item => item.data);
+    
+    // 如果历史记录不足5个，用默认网站补充
+    while (top5.length < 5 && top5.length < defaultWebsites.length) {
+        const defaultSite = defaultWebsites[top5.length];
+        // 确保不重复添加
+        if (!top5.find(site => site.url === defaultSite.url)) {
+            top5.push(defaultSite);
+        }
+    }
+    
+    console.log('Top 5 访问网站:', top5);
+    return top5.slice(0, 5); // 确保只返回5个
+}
+
+// 初始化网站卡片数据
+function initWebsiteCards() {
+    // 首先初始化示例访问历史（仅在首次使用时）
+    initSampleVisitHistory();
+    
+    // 获取访问最多的5个网站
+    websiteCards = getTopVisitedWebsites();
+    renderWebsiteCards();
+}
+
+// 渲染网站卡片
+function renderWebsiteCards() {
+    const websitesGrid = document.querySelector('.websites-grid');
+    if (!websitesGrid) return;
+    
+    websitesGrid.innerHTML = '';
+    
+    websiteCards.forEach((card, index) => {
+        const cardElement = document.createElement('div');
+        cardElement.className = 'website-card';
+        cardElement.setAttribute('data-card-id', index);
+        cardElement.innerHTML = `
+            <div class="card-edit-btn" title="编辑卡片" data-card-index="${index}">
+                <i class="fas fa-edit"></i>
+            </div>
+            <img src="${card.icon}" alt="${card.name}" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1673/1673188.png'">
+            <h3>${card.name}</h3>
+            <p>${card.description}</p>
+            <a href="${card.url}" target="_blank" data-url="${card.url}" data-name="${card.name}" data-description="${card.description}" data-icon="${card.icon}">进入</a>
+        `;
+        websitesGrid.appendChild(cardElement);
+    });
+    
+    // 添加点击链接时记录访问的事件监听
+    document.querySelectorAll('.website-card a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            const url = this.getAttribute('data-url');
+            const name = this.getAttribute('data-name');
+            const description = this.getAttribute('data-description');
+            const icon = this.getAttribute('data-icon');
+            
+            // 记录访问
+            recordVisit(url, name, description, icon);
+            
+            console.log(`用户点击访问: ${name}`);
+        });
+    });
+}
+
+// 保存卡片数据到localStorage（更新访问历史）
+function saveWebsiteCards() {
+    // 卡片数据现在基于访问历史，不再直接保存
+    // 但需要重新获取最新的top5网站
+    websiteCards = getTopVisitedWebsites();
+    console.log('网站卡片已更新:', websiteCards);
+}
+
+// 从localStorage加载卡片数据（基于访问历史）
+function loadWebsiteCards() {
+    // 访问历史已在开头加载
+    // 这里重新获取top5网站
+    websiteCards = getTopVisitedWebsites();
+    console.log('加载的网站卡片:', websiteCards);
+}
+
+// 编辑卡片功能
+let currentEditingCardIndex = -1;
+
+function openCardEditModal(cardIndex) {
+    currentEditingCardIndex = cardIndex;
+    const card = websiteCards[cardIndex];
+    
+    // 填充表单数据
+    document.getElementById('card-name').value = card.name;
+    document.getElementById('card-description').value = card.description;
+    document.getElementById('card-url').value = card.url;
+    document.getElementById('card-icon').value = card.icon;
+    
+    // 显示模态框
+    document.getElementById('card-edit-modal').classList.add('active');
+}
+
+function closeCardEditModal() {
+    document.getElementById('card-edit-modal').classList.remove('active');
+    currentEditingCardIndex = -1;
+    
+    // 清空表单
+    document.getElementById('card-name').value = '';
+    document.getElementById('card-description').value = '';
+    document.getElementById('card-url').value = '';
+    document.getElementById('card-icon').value = '';
+}
+
+function saveCardEdit() {
+    if (currentEditingCardIndex === -1) return;
+    
+    const name = document.getElementById('card-name').value.trim();
+    const description = document.getElementById('card-description').value.trim();
+    const url = document.getElementById('card-url').value.trim();
+    const icon = document.getElementById('card-icon').value.trim();
+    
+    if (!name) {
+        alert('请输入网站名称');
+        return;
+    }
+    
+    // 更新卡片数据
+    websiteCards[currentEditingCardIndex] = {
+        name: name,
+        description: description || '暂无描述',
+        url: url || '#',
+        icon: icon || 'https://cdn-icons-png.flaticon.com/512/1673/1673188.png'
+    };
+    
+    // 如果是有效URL，更新访问历史中的信息
+    if (url && url !== '#') {
+        try {
+            const domain = new URL(url).hostname;
+            if (visitHistory[domain]) {
+                visitHistory[domain].name = name;
+                visitHistory[domain].description = description;
+                visitHistory[domain].icon = icon;
+                visitHistory[domain].url = url;
+                localStorage.setItem('visitHistory', JSON.stringify(visitHistory));
+            }
+        } catch (e) {
+            console.log('URL格式无效，跳过访问历史更新');
+        }
+    }
+    
+    // 重新渲染卡片
+    renderWebsiteCards();
+    closeCardEditModal();
+    
+    showNotification('卡片更新成功！', 'success', 2000);
+}
+
+// 初始化卡片编辑功能
+function initCardEditing() {
+    console.log('Initializing card editing...');
+    
+    // 初始化网站卡片数据（基于访问历史）
+    initWebsiteCards();
+    
+    // 卡片编辑按钮事件委托
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.card-edit-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const cardIndex = parseInt(e.target.closest('.card-edit-btn').getAttribute('data-card-index'));
+            openCardEditModal(cardIndex);
+        }
+    });
+    
+    // 关闭模态框
+    const closeBtn = document.getElementById('close-card-edit-modal');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeCardEditModal);
+    }
+    
+    // 取消按钮
+    const cancelBtn = document.getElementById('cancel-card-edit-form');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeCardEditModal);
+    }
+    
+    // 保存按钮
+    const saveBtn = document.getElementById('save-card-edit');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveCardEdit);
+    }
+    
+    // 点击模态框外部关闭
+    const modal = document.getElementById('card-edit-modal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCardEditModal();
+            }
+        });
+    }
+    
+    console.log('Card editing initialized successfully');
+}
+
 // 用户设置
 const userSettings = {
     layout: 'grid', 
@@ -198,98 +601,6 @@ function updateClock() {
     date.textContent = now.toLocaleDateString('zh-CN', options);
 }
 
-// 备忘录功能
-let notes = [];
-
-function initNotes() {
-    loadNotes();
-    renderNotes();
-    
-    // 添加备忘录事件监听
-    document.getElementById('add-note-btn').addEventListener('click', addNote);
-    document.getElementById('note-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            addNote();
-        }
-    });
-}
-
-function loadNotes() {
-    const savedNotes = localStorage.getItem('notes');
-    if (savedNotes) {
-        notes = JSON.parse(savedNotes);
-    }
-}
-
-function saveNotes() {
-    localStorage.setItem('notes', JSON.stringify(notes));
-}
-
-function renderNotes() {
-    const notesList = document.getElementById('notes-list');
-    notesList.innerHTML = '';
-    
-    if (notes.length === 0) {
-        notesList.innerHTML = '<p style="text-align: center; opacity: 0.7;">暂无备忘录</p>';
-        return;
-    }
-    
-    notes.forEach((note, index) => {
-        const noteItem = document.createElement('div');
-        noteItem.classList.add('note-item');
-        noteItem.innerHTML = `
-            <div class="note-text">${note}</div>
-            <div class="note-actions">
-                <button class="note-btn edit-note" data-index="${index}"><i class="fas fa-edit"></i></button>
-                <button class="note-btn delete-note" data-index="${index}"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
-        notesList.appendChild(noteItem);
-    });
-    
-    // 添加删除和编辑事件
-    document.querySelectorAll('.delete-note').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const index = this.getAttribute('data-index');
-            deleteNote(index);
-        });
-    });
-    
-    document.querySelectorAll('.edit-note').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const index = this.getAttribute('data-index');
-            editNote(index);
-        });
-    });
-}
-
-function addNote() {
-    const noteInput = document.getElementById('note-input');
-    const text = noteInput.value.trim();
-    
-    if (text) {
-        notes.push(text);
-        saveNotes();
-        renderNotes();
-        noteInput.value = '';
-    }
-}
-
-function deleteNote(index) {
-    notes.splice(index, 1);
-    saveNotes();
-    renderNotes();
-}
-
-function editNote(index) {
-    const newText = prompt('编辑备忘录:', notes[index]);
-    if (newText !== null) {
-        notes[index] = newText.trim();
-        saveNotes();
-        renderNotes();
-    }
-}
-
 // 搜索历史和建议
 let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
 const searchSuggestions = [
@@ -374,68 +685,96 @@ function initSearchSuggestions() {
 
 // 快速访问功能
 function initQuickAccess() {
+    console.log('Initializing quick access buttons...');
+    
     // 返回顶部
-    document.getElementById('scroll-to-top').addEventListener('click', function() {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
+    const scrollToTopBtn = document.getElementById('scroll-to-top');
+    if (scrollToTopBtn) {
+        scrollToTopBtn.addEventListener('click', function() {
+            console.log('Scroll to top clicked');
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+            showNotification('已返回顶部', 'success', 2000);
         });
-        showNotification('已返回顶部', 'success', 2000);
-    });
+        console.log('Scroll to top button initialized');
+    } else {
+        console.error('Scroll to top button not found');
+    }
     
     // 随机网站
-    document.getElementById('random-site').addEventListener('click', function() {
-        const websites = document.querySelectorAll('.website-card a');
-        if (websites.length > 0) {
-            const randomIndex = Math.floor(Math.random() * websites.length);
-            const randomSite = websites[randomIndex];
-            randomSite.click();
-            showNotification('正在打开随机网站...', 'info', 2000);
-        }
-    });
+    const randomSiteBtn = document.getElementById('random-site');
+    if (randomSiteBtn) {
+        randomSiteBtn.addEventListener('click', function() {
+            console.log('Random site clicked');
+            const websites = document.querySelectorAll('.website-card a');
+            if (websites.length > 0) {
+                const randomIndex = Math.floor(Math.random() * websites.length);
+                const randomSite = websites[randomIndex];
+                randomSite.click();
+                showNotification('正在打开随机网站...', 'info', 2000);
+            }
+        });
+        console.log('Random site button initialized');
+    } else {
+        console.error('Random site button not found');
+    }
     
     // 全屏切换
     let isFullscreen = false;
-    document.getElementById('fullscreen-toggle').addEventListener('click', function() {
-        if (!isFullscreen) {
-            if (document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen();
-            } else if (document.documentElement.webkitRequestFullscreen) {
-                document.documentElement.webkitRequestFullscreen();
-            } else if (document.documentElement.msRequestFullscreen) {
-                document.documentElement.msRequestFullscreen();
+    const fullscreenBtn = document.getElementById('fullscreen-toggle');
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', function() {
+            console.log('Fullscreen toggle clicked');
+            if (!isFullscreen) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    document.documentElement.webkitRequestFullscreen();
+                } else if (document.documentElement.msRequestFullscreen) {
+                    document.documentElement.msRequestFullscreen();
+                }
+                this.innerHTML = '<i class="fas fa-compress"></i>';
+                showNotification('已进入全屏模式', 'success', 2000);
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+                this.innerHTML = '<i class="fas fa-expand"></i>';
+                showNotification('已退出全屏模式', 'success', 2000);
             }
-            this.innerHTML = '<i class="fas fa-compress"></i>';
-            showNotification('已进入全屏模式', 'success', 2000);
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            }
-            this.innerHTML = '<i class="fas fa-expand"></i>';
-            showNotification('已退出全屏模式', 'success', 2000);
-        }
-        isFullscreen = !isFullscreen;
-    });
+            isFullscreen = !isFullscreen;
+        });
+        console.log('Fullscreen button initialized');
+    } else {
+        console.error('Fullscreen button not found');
+    }
     
     // 监听全屏状态变化
     document.addEventListener('fullscreenchange', function() {
         const fullscreenBtn = document.getElementById('fullscreen-toggle');
-        if (!document.fullscreenElement) {
+        if (fullscreenBtn && !document.fullscreenElement) {
             fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
             isFullscreen = false;
         }
     });
+    
+    console.log('Quick access initialization complete');
 }
 
 // 增强的搜索功能
 function performSearchEnhanced() {
-    const engineKey = document.getElementById('engine-select').value;
-    const engine = searchEngines.find(e => e.id === engineKey);
-    if (!engine) return;
+    // 使用当前选择的搜索引擎
+    const engine = searchEngines.find(e => e.id === currentSearchEngine);
+    if (!engine) {
+        console.error('未找到搜索引擎:', currentSearchEngine);
+        return;
+    }
 
     const query = document.getElementById('search-input').value.trim();
 
@@ -476,6 +815,8 @@ function performSearchEnhanced() {
 let isDarkTheme = true;
 
 function initThemeToggle() {
+    console.log('Initializing theme toggle...');
+    
     // 从localStorage读取主题设置
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
@@ -487,9 +828,16 @@ function initThemeToggle() {
     }
     
     // 主题切换按钮点击事件
-    document.getElementById('theme-toggle').addEventListener('click', function(e) {
-        toggleTheme(e);
-    });
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', function(e) {
+            console.log('Theme toggle clicked');
+            toggleTheme(e);
+        });
+        console.log('Theme toggle button initialized');
+    } else {
+        console.error('Theme toggle button not found');
+    }
 }
 
 function toggleTheme(event) {
@@ -563,6 +911,24 @@ function startAutoThemeTimer() {
     }, 30 * 60 * 1000);
 }
 
+// 定期刷新网站卡片（检查访问历史变化）
+function startCardRefreshTimer() {
+    // 每30分钟检查一次是否需要更新卡片显示
+    setInterval(() => {
+        const newTopSites = getTopVisitedWebsites();
+        
+        // 检查是否有变化
+        const hasChanged = JSON.stringify(newTopSites) !== JSON.stringify(websiteCards);
+        
+        if (hasChanged) {
+            console.log('检测到访问历史变化，正在更新网站卡片...');
+            websiteCards = newTopSites;
+            renderWebsiteCards();
+            showNotification('网站卡片已根据访问记录更新', 'info', 3000);
+        }
+    }, 30 * 60 * 1000); // 30分钟
+}
+
 // 键盘快捷键切换主题
 function initThemeKeyboard() {
     document.addEventListener('keydown', function(e) {
@@ -574,10 +940,16 @@ function initThemeKeyboard() {
     });
 }
 
-// 天气功能
+// 天气功能（增强版，支持定位记忆）
 let currentCity = '北京';
+let userLocation = null; // 用户的地理位置信息
 
-function initWeather() {
+// 初始化天气功能
+async function initWeather() {
+    // 尝试获取用户的地理位置
+    await initUserLocation();
+    
+    // 加载天气数据
     loadWeatherData();
     
     // 刷新天气按钮
@@ -595,16 +967,121 @@ function initWeather() {
         const newCity = prompt('请输入城市名称:', currentCity);
         if (newCity && newCity.trim() !== '') {
             currentCity = newCity.trim();
-            localStorage.setItem('weather_city', currentCity);
+            // 保存用户设置的城市到localStorage
+            localStorage.setItem('weather_user_city', currentCity);
+            localStorage.setItem('weather_location_type', 'manual'); // 标记为手动设置
+            
+            // 立即更新位置显示
+            const locationText = document.getElementById('location-text');
+            if (locationText) {
+                locationText.textContent = currentCity;
+            }
+            
             loadWeatherData();
             showNotification(`已切换到${currentCity}`, 'success', 2000);
         }
     });
+}
+
+// 初始化用户位置（自动获取或使用保存的位置）
+async function initUserLocation() {
+    console.log('初始化用户位置...');
     
-    // 从localStorage读取保存的城市
-    const savedCity = localStorage.getItem('weather_city');
-    if (savedCity) {
+    // 检查是否有保存的位置设置
+    const savedCity = localStorage.getItem('weather_user_city');
+    const locationType = localStorage.getItem('weather_location_type');
+    
+    if (savedCity && locationType === 'manual') {
+        // 用户手动设置过城市，优先使用
         currentCity = savedCity;
+        console.log('使用保存的手动设置城市:', currentCity);
+        return;
+    }
+    
+    // 尝试自动获取地理位置
+    if ('geolocation' in navigator) {
+        try {
+            console.log('尝试获取地理位置...');
+            const position = await getCurrentPosition();
+            userLocation = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+            };
+            
+            // 根据坐标获取城市名称
+            const cityName = await getCityFromCoordinates(userLocation.latitude, userLocation.longitude);
+            if (cityName) {
+                currentCity = cityName;
+                // 保存自动获取的位置
+                localStorage.setItem('weather_user_city', currentCity);
+                localStorage.setItem('weather_location_type', 'auto');
+                localStorage.setItem('weather_coordinates', JSON.stringify(userLocation));
+                console.log('自动获取位置成功:', currentCity);
+                showNotification(`已自动定位到${currentCity}`, 'success', 3000);
+                
+                // 更新位置显示
+                const locationText = document.getElementById('location-text');
+                if (locationText) {
+                    locationText.textContent = currentCity;
+                }
+            }
+        } catch (error) {
+            console.log('地理位置获取失败:', error.message);
+            // 使用保存的城市或默认城市
+            if (savedCity) {
+                currentCity = savedCity;
+                console.log('使用保存的城市:', currentCity);
+            } else {
+                console.log('使用默认城市:', currentCity);
+            }
+        }
+    } else {
+        console.log('浏览器不支持地理位置');
+        if (savedCity) {
+            currentCity = savedCity;
+        }
+    }
+    
+    // 确保位置显示正确更新
+    const locationText = document.getElementById('location-text');
+    if (locationText) {
+        locationText.textContent = currentCity;
+    }
+}
+
+// 获取当前位置的Promise封装
+function getCurrentPosition() {
+    return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 10000,
+            maximumAge: 600000, // 10分钟内的缓存位置有效
+            enableHighAccuracy: false
+        });
+    });
+}
+
+// 根据坐标获取城市名称
+async function getCityFromCoordinates(lat, lng) {
+    try {
+        // 使用免费的逆地理编码服务
+        const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=zh`);
+        const data = await response.json();
+        
+        // 优先使用城市名，然后是地区名
+        const cityName = data.city || data.locality || data.principalSubdivision || '未知城市';
+        console.log('逆地理编码结果:', {
+            city: data.city,
+            locality: data.locality,
+            region: data.principalSubdivision,
+            country: data.countryName,
+            selected: cityName
+        });
+        
+        return cityName;
+    } catch (error) {
+        console.log('逆地理编码失败:', error);
+        return null;
     }
 }
 
@@ -622,37 +1099,80 @@ function loadWeatherData() {
         </div>
     `;
     
-    // 模拟天气数据（实际应用中应该调用真实的天气API）
+    // 根据城市获取天气数据
     setTimeout(() => {
-        const mockWeatherData = generateMockWeather();
-        displayWeatherData(mockWeatherData);
+        const weatherData = getWeatherByCity(currentCity);
+        displayWeatherData(weatherData);
     }, 1500);
 }
 
-function generateMockWeather() {
-    const conditions = [
-        { icon: 'fas fa-sun', class: 'sunny', desc: '晴朗', temp: 25 },
-        { icon: 'fas fa-cloud-sun', class: 'cloudy', desc: '多云', temp: 22 },
-        { icon: 'fas fa-cloud-rain', class: 'rainy', desc: '小雨', temp: 18 },
-        { icon: 'fas fa-snowflake', class: 'snowy', desc: '小雪', temp: -2 }
-    ];
+// 根据城市获取天气数据
+function getWeatherByCity(city) {
+    // 城市天气数据库（基于季节和地理位置的合理天气）
+    const cityWeatherData = {
+        '北京': { icon: 'fas fa-cloud', class: 'cloudy', desc: '多云', temp: 8, humidity: 65, windSpeed: 12, pressure: 1018, visibility: 15 },
+        '上海': { icon: 'fas fa-cloud-rain', class: 'rainy', desc: '小雨', temp: 12, humidity: 78, windSpeed: 8, pressure: 1015, visibility: 8 },
+        '广州': { icon: 'fas fa-cloud-sun', class: 'cloudy', desc: '多云', temp: 22, humidity: 72, windSpeed: 6, pressure: 1012, visibility: 12 },
+        '深圳': { icon: 'fas fa-sun', class: 'sunny', desc: '晴朗', temp: 24, humidity: 68, windSpeed: 5, pressure: 1013, visibility: 18 },
+        '杭州': { icon: 'fas fa-cloud-rain', class: 'rainy', desc: '阴雨', temp: 14, humidity: 82, windSpeed: 7, pressure: 1016, visibility: 6 },
+        '成都': { icon: 'fas fa-cloud', class: 'cloudy', desc: '阴天', temp: 16, humidity: 75, windSpeed: 4, pressure: 1020, visibility: 10 },
+        '重庆': { icon: 'fas fa-cloud', class: 'cloudy', desc: '多云', temp: 18, humidity: 79, windSpeed: 3, pressure: 1017, visibility: 9 },
+        '武汉': { icon: 'fas fa-cloud-sun', class: 'cloudy', desc: '多云', temp: 11, humidity: 70, windSpeed: 9, pressure: 1019, visibility: 13 },
+        '西安': { icon: 'fas fa-sun', class: 'sunny', desc: '晴朗', temp: 9, humidity: 58, windSpeed: 11, pressure: 1021, visibility: 16 },
+        '南京': { icon: 'fas fa-cloud-rain', class: 'rainy', desc: '小雨', temp: 13, humidity: 76, windSpeed: 8, pressure: 1014, visibility: 7 },
+        '天津': { icon: 'fas fa-cloud', class: 'cloudy', desc: '多云', temp: 7, humidity: 62, windSpeed: 13, pressure: 1020, visibility: 14 },
+        '青岛': { icon: 'fas fa-wind', class: 'cloudy', desc: '多风', temp: 10, humidity: 74, windSpeed: 18, pressure: 1016, visibility: 12 },
+        '大连': { icon: 'fas fa-cloud-sun', class: 'cloudy', desc: '多云', temp: 6, humidity: 67, windSpeed: 15, pressure: 1022, visibility: 11 },
+        '厦门': { icon: 'fas fa-sun', class: 'sunny', desc: '晴朗', temp: 21, humidity: 71, windSpeed: 7, pressure: 1011, visibility: 17 },
+        '昆明': { icon: 'fas fa-sun', class: 'sunny', desc: '晴朗', temp: 19, humidity: 55, windSpeed: 5, pressure: 1025, visibility: 20 },
+        '哈尔滨': { icon: 'fas fa-snowflake', class: 'snowy', desc: '小雪', temp: -8, humidity: 78, windSpeed: 14, pressure: 1028, visibility: 8 },
+        '长春': { icon: 'fas fa-snowflake', class: 'snowy', desc: '小雪', temp: -5, humidity: 75, windSpeed: 12, pressure: 1026, visibility: 9 },
+        '沈阳': { icon: 'fas fa-cloud', class: 'cloudy', desc: '阴天', temp: 1, humidity: 69, windSpeed: 10, pressure: 1024, visibility: 12 },
+        '三亚': { icon: 'fas fa-sun', class: 'sunny', desc: '晴朗', temp: 28, humidity: 76, windSpeed: 8, pressure: 1008, visibility: 19 },
+        '拉萨': { icon: 'fas fa-sun', class: 'sunny', desc: '晴朗', temp: 12, humidity: 35, windSpeed: 6, pressure: 1030, visibility: 25 },
+        '乌鲁木齐': { icon: 'fas fa-snowflake', class: 'snowy', desc: '雪', temp: -12, humidity: 72, windSpeed: 16, pressure: 1032, visibility: 5 }
+    };
     
-    const current = conditions[Math.floor(Math.random() * conditions.length)];
+    // 获取城市天气，如果城市不在数据库中，则生成基于城市名的模拟数据
+    let weather = cityWeatherData[city];
+    if (!weather) {
+        // 为未知城市生成基于地理规律的天气
+        weather = generateWeatherForUnknownCity(city);
+    }
     
     return {
-        city: currentCity,
+        city: city,
         current: {
-            temperature: current.temp + Math.floor(Math.random() * 10 - 5),
-            condition: current.desc,
-            icon: current.icon,
-            iconClass: current.class,
-            humidity: 45 + Math.floor(Math.random() * 40),
-            windSpeed: Math.floor(Math.random() * 15) + 3,
-            pressure: 1010 + Math.floor(Math.random() * 40),
-            visibility: 8 + Math.floor(Math.random() * 12)
+            temperature: weather.temp + Math.floor(Math.random() * 6 - 3), // 添加±3度随机波动
+            condition: weather.desc,
+            icon: weather.icon,
+            iconClass: weather.class,
+            humidity: weather.humidity + Math.floor(Math.random() * 10 - 5),
+            windSpeed: weather.windSpeed + Math.floor(Math.random() * 4 - 2),
+            pressure: weather.pressure + Math.floor(Math.random() * 8 - 4),
+            visibility: weather.visibility + Math.floor(Math.random() * 6 - 3)
         },
         forecast: generateForecast()
     };
+}
+
+// 为未知城市生成天气数据
+function generateWeatherForUnknownCity(city) {
+    const conditions = [
+        { icon: 'fas fa-sun', class: 'sunny', desc: '晴朗', temp: 15, humidity: 55, windSpeed: 8, pressure: 1018, visibility: 18 },
+        { icon: 'fas fa-cloud-sun', class: 'cloudy', desc: '多云', temp: 12, humidity: 65, windSpeed: 10, pressure: 1015, visibility: 14 },
+        { icon: 'fas fa-cloud-rain', class: 'rainy', desc: '小雨', temp: 10, humidity: 78, windSpeed: 6, pressure: 1012, visibility: 8 },
+        { icon: 'fas fa-cloud', class: 'cloudy', desc: '阴天', temp: 8, humidity: 70, windSpeed: 7, pressure: 1020, visibility: 12 }
+    ];
+    
+    // 基于城市名生成一致的"随机"天气（使用城市名作为种子）
+    let hash = 0;
+    for (let i = 0; i < city.length; i++) {
+        hash = ((hash << 5) - hash + city.charCodeAt(i)) & 0xffffffff;
+    }
+    const index = Math.abs(hash) % conditions.length;
+    
+    return conditions[index];
 }
 
 function generateForecast() {
@@ -721,14 +1241,22 @@ let userFavorites = [
     {name: "YouTube", url: "https://www.youtube.com", icon: "fab fa-youtube"}
 ];
 
-// 搜索引擎数据
+// 搜索引擎数据（只保留Google和Bing）
 let searchEngines = [
-    {id: "baidu", name: "百度", url: "https://www.baidu.com/s?wd=", icon: "fab fa-baidu"},
     {id: "google", name: "谷歌", url: "https://www.google.com/search?q=", icon: "fab fa-google"},
-    {id: "bing", name: "必应", url: "https://www.bing.com/search?q=", icon: "fab fa-microsoft"},
-    {id: "sogou", name: "搜狗", url: "https://www.sogou.com/web?query=", icon: "fas fa-search"},
-    {id: "360", name: "360搜索", url: "https://www.so.com/s?q=", icon: "fas fa-shield-alt"}
+    {id: "bing", name: "必应", url: "https://www.bing.com/search?q=", icon: "fab fa-microsoft"}
 ];
+
+// 当前选择的搜索引擎
+let currentSearchEngine = 'google';
+
+// 网络检测状态
+let networkStatus = {
+    canAccessGoogle: false,
+    userLocation: null,
+    isChina: false,
+    lastChecked: null
+};
 
 // 特效状态
 let sakuraEnabled = true;
@@ -739,6 +1267,12 @@ let bookmarksEnabled = true;
 function renderFavorites() {
     const favoritesGrid = document.getElementById('favorites-grid');
     const emptyState = document.getElementById('empty-favorites');
+
+    // 如果页面上没有收藏相关元素，直接返回
+    if (!favoritesGrid || !emptyState) {
+        console.log('Favorites elements not found, skipping renderFavorites');
+        return;
+    }
 
     if (userFavorites.length === 0) {
         favoritesGrid.innerHTML = '';
@@ -825,6 +1359,13 @@ function editFavorite(index) {
 // 渲染搜索引擎列表
 function renderEngineList() {
     const engineList = document.getElementById('engine-list');
+    
+    // 如果页面上没有engine-list元素，直接返回
+    if (!engineList) {
+        console.log('Engine list element not found, skipping renderEngineList');
+        return;
+    }
+    
     engineList.innerHTML = '';
 
     searchEngines.forEach((engine, index) => {
@@ -944,20 +1485,185 @@ function updateEngineSelect() {
     updateEngineDisplay(engineSelect.value);
 }
 
-// 更新搜索引擎显示
+// 更新搜索引擎显示（简化版，因为UI中已移除选择器）
 function updateEngineDisplay(engineKey) {
     const engine = searchEngines.find(e => e.id === engineKey);
     if (!engine) return;
+    
+    console.log(`当前搜索引擎: ${engine.name}`);
+}
 
-    const engineIcon = document.getElementById('engine-icon-display');
-    engineIcon.innerHTML = `<i class="${engine.icon}"></i>`;
-    document.getElementById('current-engine').textContent = `当前引擎：${engine.name}`;
+// 网络检测功能
+async function checkNetworkStatus() {
+    console.log('开始检测网络状态和Google访问性...');
+    
+    try {
+        // 检测Google访问性
+        const googleAccessible = await checkGoogleAccess();
+        
+        // 获取用户地理位置
+        const locationInfo = await getUserLocation();
+        
+        // 更新网络状态
+        networkStatus = {
+            canAccessGoogle: googleAccessible,
+            userLocation: locationInfo.location,
+            isChina: locationInfo.isChina,
+            lastChecked: new Date().toISOString()
+        };
+        
+        console.log('网络检测结果:', networkStatus);
+        
+        // 根据检测结果选择搜索引擎
+        selectOptimalSearchEngine();
+        
+        // 如果是中国IP且尝试使用Google，显示提示
+        if (networkStatus.isChina && currentSearchEngine === 'google') {
+            showGoogleAccessWarning();
+        }
+        
+    } catch (error) {
+        console.log('网络检测失败，使用默认配置:', error);
+        // 检测失败时默认使用Bing
+        currentSearchEngine = 'bing';
+        updateEngineDisplay('bing');
+    }
+}
 
-    // 添加动画效果
-    engineIcon.style.animation = 'none';
+// 检测Google访问性
+async function checkGoogleAccess() {
+    try {
+        // 尝试访问Google的favicon（较小的请求）
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
+        
+        const response = await fetch('https://www.google.com/favicon.ico', {
+            method: 'HEAD',
+            mode: 'no-cors',
+            signal: controller.signal,
+            cache: 'no-cache'
+        });
+        
+        clearTimeout(timeoutId);
+        console.log('Google访问检测: 可访问');
+        return true;
+    } catch (error) {
+        console.log('Google访问检测: 无法访问 -', error.message);
+        return false;
+    }
+}
+
+// 获取用户地理位置信息
+async function getUserLocation() {
+    try {
+        // 使用免费的IP地理位置服务
+        const response = await fetch('https://ipapi.co/json/', {
+            timeout: 5000
+        });
+        
+        if (!response.ok) {
+            throw new Error('IP地理位置服务不可用');
+        }
+        
+        const data = await response.json();
+        
+        // 检查是否为中国地区（包括大陆、香港、台湾、澳门）
+        const chinaRegions = ['CN', 'HK', 'TW', 'MO'];
+        const isChina = chinaRegions.includes(data.country_code);
+        
+        console.log('地理位置检测:', {
+            country: data.country_name,
+            countryCode: data.country_code,
+            region: data.region,
+            city: data.city,
+            isChina: isChina
+        });
+        
+        return {
+            location: `${data.city}, ${data.region}, ${data.country_name}`,
+            isChina: isChina,
+            countryCode: data.country_code,
+            country: data.country_name
+        };
+        
+    } catch (error) {
+        console.log('地理位置检测失败:', error);
+        return {
+            location: '未知位置',
+            isChina: false,
+            countryCode: 'Unknown',
+            country: '未知'
+        };
+    }
+}
+
+// 根据网络状态选择最优搜索引擎
+function selectOptimalSearchEngine() {
+    if (networkStatus.canAccessGoogle) {
+        currentSearchEngine = 'google';
+        console.log('Google可访问，使用Google搜索');
+    } else {
+        currentSearchEngine = 'bing';
+        console.log('Google不可访问，切换到Bing搜索');
+        showNotification('检测到Google无法访问，已自动切换到Bing', 'info', 4000);
+    }
+    
+    // 更新搜索引擎显示
+    updateEngineDisplay(currentSearchEngine);
+}
+
+// 显示Google访问警告（针对中国用户）
+function showGoogleAccessWarning() {
+    const warningMessage = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-exclamation-triangle" style="color: #ff9800;"></i>
+            <div>
+                <div>检测到您位于${networkStatus.userLocation}</div>
+                <div style="font-size: 0.9rem; opacity: 0.8; margin-top: 2px;">
+                    Google在中国地区可能无法正常访问，建议使用Bing搜索
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 创建自定义通知
+    const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: var(--card-bg);
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        padding: 15px 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-left: 4px solid #ff9800;
+        box-shadow: var(--shadow);
+        z-index: 2001;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        max-width: 350px;
+        color: var(--light);
+    `;
+    notification.innerHTML = warningMessage;
+    
+    document.getElementById('notification-container').appendChild(notification);
+    
+    // 显示通知
+    setTimeout(() => notification.style.transform = 'translateX(0)', 100);
+    
+    // 自动隐藏
     setTimeout(() => {
-        engineIcon.style.animation = 'pulse 0.5s';
-    }, 10);
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => notification.remove(), 300);
+    }, 8000);
+}
+
+// 手动刷新网络检测
+function refreshNetworkStatus() {
+    showNotification('正在检测网络状态...', 'info', 2000);
+    checkNetworkStatus();
 }
 
 // 执行搜索
@@ -1033,6 +1739,106 @@ function saveSettings() {
     applySettings();
 }
 
+// 访问历史管理功能
+function initVisitHistoryManagement() {
+    // 查看访问历史按钮
+    const viewHistoryBtn = document.getElementById('view-history-btn');
+    if (viewHistoryBtn) {
+        viewHistoryBtn.addEventListener('click', function() {
+            showVisitHistoryModal();
+        });
+    }
+    
+    // 清空访问历史按钮
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', function() {
+            if (confirm('确定要清空所有访问历史记录吗？这将重置网站卡片显示。')) {
+                visitHistory = {};
+                localStorage.removeItem('visitHistory');
+                // 重新初始化示例数据
+                initSampleVisitHistory();
+                // 更新网站卡片
+                websiteCards = getTopVisitedWebsites();
+                renderWebsiteCards();
+                showNotification('访问历史已清空并重新初始化', 'success', 3000);
+            }
+        });
+    }
+}
+
+// 显示访问历史模态框
+function showVisitHistoryModal() {
+    const historyData = Object.entries(visitHistory)
+        .sort((a, b) => b[1].totalVisits - a[1].totalVisits)
+        .slice(0, 10); // 显示前10个最常访问的网站
+    
+    const today = new Date().toDateString();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+    
+    let historyContent = '<div style="max-height: 400px; overflow-y: auto;">';
+    
+    if (historyData.length === 0) {
+        historyContent += '<p style="text-align: center; opacity: 0.7;">暂无访问历史记录</p>';
+    } else {
+        historyContent += '<div style="margin-bottom: 15px; font-size: 0.9rem; opacity: 0.8;">访问次数统计（按总访问量排序）</div>';
+        
+        historyData.forEach(([domain, data], index) => {
+            const todayVisits = data.visits[today] || 0;
+            const yesterdayVisits = data.visits[yesterdayStr] || 0;
+            const totalVisits = data.totalVisits || 0;
+            
+            historyContent += `
+                <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <img src="${data.icon}" alt="${data.name}" style="width: 24px; height: 24px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1673/1673188.png'">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; margin-bottom: 2px;">${data.name}</div>
+                            <div style="font-size: 0.8rem; opacity: 0.7;">${domain}</div>
+                        </div>
+                        <div style="text-align: right; font-size: 0.8rem;">
+                            <div>总计: ${totalVisits}次</div>
+                            <div>昨天: ${yesterdayVisits}次</div>
+                            <div>今天: ${todayVisits}次</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    historyContent += '</div>';
+    
+    // 创建模态框
+    const modal = document.createElement('div');
+    modal.className = 'card-edit-modal';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="card-edit-modal-content" style="max-width: 600px;">
+            <div class="card-edit-modal-header">
+                <h2 class="card-edit-modal-title">访问历史记录</h2>
+                <button class="close-card-edit-modal" onclick="this.closest('.card-edit-modal').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="color: var(--light);">
+                ${historyContent}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // 点击外部关闭
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.remove();
+        }
+    });
+}
+
 // 数据管理功能
 function initDataManagement() {
     // 导出数据
@@ -1041,7 +1847,6 @@ function initDataManagement() {
             userSettings: userSettings,
             userFavorites: userFavorites,
             searchHistory: searchHistory,
-            notes: notes,
             searchEngines: searchEngines,
             exportDate: new Date().toISOString()
         };
@@ -1084,10 +1889,6 @@ function initDataManagement() {
                         searchHistory = data.searchHistory;
                         localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
                     }
-                    if (data.notes) {
-                        notes = data.notes;
-                        localStorage.setItem('notes', JSON.stringify(notes));
-                    }
                     if (data.searchEngines) {
                         searchEngines = data.searchEngines;
                     }
@@ -1096,7 +1897,6 @@ function initDataManagement() {
                     applySettings();
                     renderFavorites();
                     renderEngineList();
-                    renderNotes();
                     updateEngineSelect();
                     
                     showNotification('数据导入成功！页面将刷新以应用设置。', 'success', 2000);
@@ -1127,46 +1927,93 @@ function initDataManagement() {
 
 // DOM内容加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded - Starting initialization...');
+    
     loadSettings();
     createStarryBackground();
     createSakuraEffect();
     createHeartsEffect();
     createSnowEffect();
     createRibbonsEffect();
-    renderFavorites();
-    renderEngineList();
+    // renderFavorites(); // 暂时注释掉，因为页面上没有收藏元素
+    // renderEngineList(); // 暂时注释掉，因为页面上没有引擎列表元素
     initClock();
-    initNotes();
     initSearchSuggestions();
     initQuickAccess();
     initDataManagement();
+    initVisitHistoryManagement(); // 添加访问历史管理初始化
     initWeather();
     initThemeToggle();
     initThemeKeyboard();
     startAutoThemeTimer();
+    startCardRefreshTimer(); // 启动卡片刷新定时器
+    initCardEditing(); // 添加卡片编辑功能初始化
+
+    // 启动网络检测（延迟启动，避免阻塞页面加载）
+    setTimeout(() => {
+        checkNetworkStatus();
+    }, 1000);
+
+    // 显示功能状态信息
+    console.log('=== 星辰导航功能状态 ===');
+    console.log('📊 访问历史记录数量:', Object.keys(visitHistory).length);
+    console.log('🎯 当前显示网站卡片:', websiteCards.length);
+    console.log('🔍 当前搜索引擎:', currentSearchEngine);
+    console.log('🌐 网络检测状态:', networkStatus);
+    console.log('💾 localStorage使用情况:');
+    console.log('  - visitHistory:', localStorage.getItem('visitHistory') ? '已保存' : '未保存');
+    console.log('  - userSettings:', localStorage.getItem('userSettings') ? '已保存' : '未保存');
+    console.log('✅ 所有功能初始化完成');
+    console.log('========================');
+    
+    // 显示卡片信息
+    if (websiteCards.length > 0) {
+        console.log('当前显示的网站卡片:');
+        websiteCards.forEach((card, index) => {
+            console.log(`  ${index + 1}. ${card.name} - ${card.url}`);
+        });
+    }
 
     // 设置菜单功能
+    console.log('Initializing settings menu...');
     const settingsToggle = document.getElementById('settings-toggle');
     const settingsMenu = document.getElementById('settings-menu');
     const closeSettings = document.getElementById('close-settings');
 
-    settingsToggle.addEventListener('click', (e) => {
-        e.preventDefault();
-        settingsMenu.classList.toggle('active');
+    console.log('Found elements:', {
+        settingsToggle: !!settingsToggle,
+        settingsMenu: !!settingsMenu,
+        closeSettings: !!closeSettings
     });
 
-    closeSettings.addEventListener('click', () => {
-        settingsMenu.classList.remove('active');
-    });
+    if (settingsToggle && settingsMenu && closeSettings) {
+        settingsToggle.addEventListener('click', (e) => {
+            console.log('Settings toggle clicked');
+            e.preventDefault();
+            settingsMenu.classList.toggle('active');
+        });
 
-    // 点击外部关闭设置菜单
-    document.addEventListener('click', (e) => {
-        if (!settingsMenu.contains(e.target) &&
-            e.target !== settingsToggle &&
-            !settingsToggle.contains(e.target)) {
+        closeSettings.addEventListener('click', () => {
+            console.log('Close settings clicked');
             settingsMenu.classList.remove('active');
-        }
-    });
+        });
+
+        // 点击外部关闭设置菜单
+        document.addEventListener('click', (e) => {
+            if (!settingsMenu.contains(e.target) &&
+                e.target !== settingsToggle &&
+                !settingsToggle.contains(e.target)) {
+                settingsMenu.classList.remove('active');
+            }
+        });
+        console.log('Settings menu initialized successfully');
+    } else {
+        console.error('Settings elements not found:', {
+            settingsToggle: !!settingsToggle,
+            settingsMenu: !!settingsMenu,
+            closeSettings: !!closeSettings
+        });
+    }
 
     // 布局选择
     document.getElementById('layout-select').addEventListener('change', function() {
@@ -1228,6 +2075,14 @@ document.addEventListener('DOMContentLoaded', () => {
         saveSettings();
     });
 
+    // 网络状态检测按钮
+    const refreshNetworkBtn = document.getElementById('refresh-network-btn');
+    if (refreshNetworkBtn) {
+        refreshNetworkBtn.addEventListener('click', function() {
+            refreshNetworkStatus();
+        });
+    }
+
     // 收藏栏开关
     const bookmarksSetting = document.getElementById('bookmarks-setting');
     bookmarksSetting.addEventListener('change', function() {
@@ -1247,93 +2102,48 @@ document.addEventListener('DOMContentLoaded', () => {
         settingsMenu.classList.remove('active');
     });
 
-    // 初始化搜索引擎选择器
-    const engineSelect = document.getElementById('engine-select');
-    engineSelect.addEventListener('change', function() {
-        updateEngineDisplay(this.value);
-    });
-
-    // 更新当前搜索引擎显示
-    updateEngineDisplay(engineSelect.value);
-
-    // 搜索框回车键支持
+    // 搜索框回车键支持和搜索图标显示控制
     const searchInput = document.querySelector('.search-text');
+    const searchIcon = document.getElementById('search-icon');
+    
+    // 输入框内容变化时控制搜索图标显示
+    searchInput.addEventListener('input', (e) => {
+        if (e.target.value.trim()) {
+            searchIcon.classList.add('visible');
+        } else {
+            searchIcon.classList.remove('visible');
+        }
+    });
+    
+    // 回车键搜索
     searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && e.target.value.trim()) {
+            performSearch();
+        }
+    });
+    
+    // 点击搜索图标搜索
+    searchIcon.addEventListener('click', () => {
+        if (searchInput.value.trim()) {
             performSearch();
         }
     });
 
-    // 导航链接点击事件
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const target = this.getAttribute('data-target');
-            switchContent(target);
+    // 添加收藏按钮点击事件（如果存在的话）
+    const addFavoriteBtn = document.getElementById('add-favorite-btn');
+    if (addFavoriteBtn) {
+        addFavoriteBtn.addEventListener('click', function() {
+            const name = prompt('请输入网站名称');
+            if (!name) return;
+
+            const url = prompt('请输入网站URL');
+            if (!url) return;
+
+            const icon = prompt('请输入网站图标类名（如：fab fa-google）', 'fas fa-globe');
+
+            addFavorite(name, url, icon || 'fas fa-globe');
         });
-    });
-
-    // 添加收藏按钮点击事件
-    document.getElementById('add-favorite-btn').addEventListener('click', function() {
-        const name = prompt('请输入网站名称');
-        if (!name) return;
-
-        const url = prompt('请输入网站URL');
-        if (!url) return;
-
-        const icon = prompt('请输入网站图标类名（如：fab fa-google）', 'fas fa-globe');
-
-        addFavorite(name, url, icon || 'fas fa-globe');
-    });
-
-    // 发现页面收藏按钮事件
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('add-to-fav-btn')) {
-            const name = e.target.getAttribute('data-name');
-            const url = e.target.getAttribute('data-url');
-            const icon = e.target.getAttribute('data-icon');
-
-            addFavorite(name, url, icon);
-
-            // 添加成功反馈
-            const originalHTML = e.target.innerHTML;
-            e.target.innerHTML = '<i class="fas fa-check"></i> 已收藏';
-            e.target.disabled = true;
-            e.target.style.background = '#4CAF50';
-            e.target.style.borderColor = '#4CAF50';
-
-            setTimeout(() => {
-                e.target.innerHTML = originalHTML;
-                e.target.disabled = false;
-                e.target.style.background = '';
-                e.target.style.borderColor = '';
-            }, 2000);
-        }
-    });
-
-    // 为收藏页面添加事件委托
-    document.getElementById('favorites-grid').addEventListener('click', function(e) {
-        // 访问按钮
-        if (e.target.closest('.visit-favorite')) {
-            const btn = e.target.closest('.visit-favorite');
-            const url = btn.getAttribute('data-url');
-            window.open(url, '_blank');
-        }
-
-        // 删除按钮
-        if (e.target.closest('.delete-favorite')) {
-            const btn = e.target.closest('.delete-favorite');
-            const index = parseInt(btn.getAttribute('data-index'));
-            deleteFavorite(index);
-        }
-
-        // 编辑按钮
-        if (e.target.closest('.edit-favorite')) {
-            const btn = e.target.closest('.edit-favorite');
-            const index = parseInt(btn.getAttribute('data-index'));
-            editFavorite(index);
-        }
-    });
+    }
 
     // 搜索引擎管理按钮
     document.getElementById('manage-engines-btn').addEventListener('click', function() {
